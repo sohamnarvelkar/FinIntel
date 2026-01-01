@@ -9,18 +9,19 @@ const MarkdownView: React.FC<Props> = ({ content }) => {
   const processLine = (line: string, index: number) => {
     const trimmedLine = line.trim();
 
-    // Specialized header for Risk (Alert Style)
-    if (line.toLowerCase().includes('risk guidance & caution') && (line.startsWith('#') || line.startsWith('**'))) {
+    // Specialized header for Risk / Disclaimer (Alert Style)
+    if ((line.toLowerCase().includes('risk guidance') || line.toLowerCase().includes('disclaimer')) && (line.startsWith('#') || line.startsWith('**'))) {
         return (
-            <div key={index} className="mt-8 mb-4 p-4 bg-orange-500/5 border-l-4 border-orange-500 rounded-r-lg">
-                <h3 className="text-xl font-black text-orange-400 uppercase tracking-[0.1em]">
+            <div key={index} className="mt-8 mb-4 p-4 bg-rose-500/5 border-l-4 border-rose-500 rounded-r-lg">
+                <h3 className="text-sm font-black text-rose-400 uppercase tracking-[0.1em] flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                     {line.replace(/^#+\s*/, '').replace(/\*\*/g, '')}
                 </h3>
             </div>
         );
     }
 
-    // Specialized Block for Mentor Discovery / Clarifying Questions
+    // Specialized Block for Mentor Discovery
     if (line.toLowerCase().includes('personal discovery session') || line.toLowerCase().includes('discovery session')) {
         return (
             <div key={index} className="mt-8 mb-6 p-1 rounded-2xl bg-gradient-to-r from-indigo-500/20 to-blue-500/10">
@@ -34,7 +35,7 @@ const MarkdownView: React.FC<Props> = ({ content }) => {
         );
     }
 
-    // Specialized Block for Mentor Insights/Quotes (Empathy Block)
+    // Specialized Block for Mentor Insights/Quotes
     if (line.startsWith('> ')) {
       return (
         <blockquote key={index} className="mt-6 mb-6 p-6 bg-indigo-500/5 border-l-4 border-indigo-500 rounded-r-2xl italic text-indigo-200 leading-relaxed shadow-sm relative group">
@@ -44,7 +45,7 @@ const MarkdownView: React.FC<Props> = ({ content }) => {
       );
     }
 
-    // Specialized Styling for "Micro-Wins" or "Action Steps"
+    // Specialized Styling for "Micro-Wins"
     if (line.toLowerCase().includes('micro-win') || line.toLowerCase().includes('action step') || line.toLowerCase().includes('blueprint')) {
         return (
             <div key={index} className="mt-6 mb-2 flex items-center gap-3">
@@ -63,7 +64,7 @@ const MarkdownView: React.FC<Props> = ({ content }) => {
     if (line.startsWith('## ')) return <h2 key={index} className="text-2xl font-bold mt-10 mb-6 text-blue-300 border-b border-slate-800 pb-3 tracking-tight">{line.replace('## ', '')}</h2>;
     if (line.startsWith('# ')) return <h1 key={index} className="text-3xl font-black mt-12 mb-8 text-white tracking-tighter uppercase">{line.replace('# ', '')}</h1>;
 
-    // Bullet points (Softer styling for Mentor context)
+    // Bullet points
     if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
       return (
         <li key={index} className="ml-6 mb-3 list-disc text-slate-300 leading-relaxed">

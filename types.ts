@@ -3,7 +3,19 @@ export enum FinMode {
   TRADING = 'TRADING',
   PORTFOLIO = 'PORTFOLIO',
   ANALYST = 'ANALYST',
-  MENTOR = 'MENTOR'
+  MENTOR = 'MENTOR',
+  EDUCATION = 'EDUCATION',
+  STRATEGY = 'STRATEGY',
+  DISCIPLINE = 'DISCIPLINE',
+  PROJECTION = 'PROJECTION',
+  CALIBRATION = 'CALIBRATION',
+  SENTIMENT = 'SENTIMENT'
+}
+
+export enum ExpertiseLevel {
+  BEGINNER = 'BEGINNER',
+  INTERMEDIATE = 'INTERMEDIATE',
+  PRO = 'PRO'
 }
 
 export interface ChatMessage {
@@ -22,5 +34,6 @@ export interface PortfolioAsset {
 
 export interface UserContext {
   mode: FinMode;
+  expertise: ExpertiseLevel;
   portfolio?: PortfolioAsset[];
 }
