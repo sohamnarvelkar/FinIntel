@@ -1,0 +1,7 @@
+{
+  "name": "FinIntel Advanced",
+  "description": "A professional-grade financial intelligence system offering AI-driven trading assistance, portfolio management, stock analysis, and personal finance mentoring.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
