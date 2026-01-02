@@ -73,6 +73,59 @@
         .animate-ticker:hover {
             animation-play-state: paused;
         }
+
+        /* Print Export Styles */
+        @media print {
+            body {
+                background-color: white !important;
+                color: black !important;
+            }
+            aside, header, #ticker-node, #input-console, #camera-modal, #security-guard, .action-btn-node {
+                display: none !important;
+            }
+            main {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                overflow: visible !important;
+            }
+            .max-w-5xl {
+                max-width: 100% !important;
+                padding: 0 !important;
+            }
+            .bg-[#0d1321], .bg-[#0a0f1a], .bg-[#0f172a], .bg-slate-900/50, .bg-slate-900/20 {
+                background-color: #f8fafc !important;
+                border-color: #e2e8f0 !important;
+                box-shadow: none !important;
+            }
+            .text-white, .text-slate-300, .text-slate-200 {
+                color: #0f172a !important;
+            }
+            .text-blue-400, .text-blue-500, .text-indigo-400, .text-emerald-500, .text-rose-500 {
+                color: #1e40af !important; /* Standardize for printing */
+                border-color: #cbd5e1 !important;
+            }
+            .rounded-3xl, .rounded-2xl {
+                border-radius: 4px !important;
+                border: 1px solid #e2e8f0 !important;
+            }
+            .pb-48 {
+                padding-bottom: 0 !important;
+            }
+            .assistant-node {
+                page-break-inside: avoid;
+                margin-bottom: 2rem !important;
+            }
+            .print-header {
+                display: block !important;
+                margin-bottom: 2rem;
+                padding-bottom: 1rem;
+                border-bottom: 2px solid #0f172a;
+            }
+        }
+        .print-header {
+            display: none;
+        }
     </style>
 <script type="importmap">
 {

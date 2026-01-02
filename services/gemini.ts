@@ -1,6 +1,6 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { FinMode, ChatMessage, ExpertiseLevel, FinancialGoal } from "../types";
+import { FinMode, ChatMessage, ExpertiseLevel, FinancialGoal, Attachment, ErrorCategory } from "../types";
 import { MODE_CONFIGS, EXPERTISE_MODIFIERS, GOAL_MODIFIERS } from "../constants";
 
 export async function askFinIntel(
@@ -8,21 +8,53 @@ export async function askFinIntel(
   mode: FinMode,
   expertise: ExpertiseLevel = ExpertiseLevel.INTERMEDIATE,
   goal: FinancialGoal = FinancialGoal.ACCUMULATION,
-  history: ChatMessage[] = []
+  history: ChatMessage[] = [],
+  attachments: Attachment[] = []
 ): Promise<{ text: string; sources?: Array<{ title: string; uri: string }> }> {
+  
+  if (!process.env.API_KEY) {
+    throw {
+      category: ErrorCategory.AUTH,
+      message: "Node authentication failed. Missing API credentials.",
+      retryable: false
+    };
+  }
+
+  if (!navigator.onLine) {
+    throw {
+      category: ErrorCategory.NETWORK,
+      message: "External link severed. Please check your network connectivity.",
+      retryable: true
+    };
+  }
+
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const config = MODE_CONFIGS[mode];
   const expertiseModifier = EXPERTISE_MODIFIERS[expertise];
   const goalModifier = GOAL_MODIFIERS[goal];
 
-  const contents = [
-    ...history.slice(-10).map(msg => ({ 
-      role: msg.role === 'user' ? 'user' as const : 'model' as const,
-      parts: [{ text: msg.content }]
+  const historyParts = history.slice(-6).map(msg => ({ 
+    role: msg.role === 'user' ? 'user' as const : 'model' as const,
+    parts: [
+      ...(msg.attachments || []).map(a => ({
+        inlineData: { data: a.data.split(',')[1] || a.data, mimeType: a.mimeType }
+      })),
+      { text: msg.content }
+    ]
+  }));
+
+  const currentParts: any[] = [
+    ...attachments.map(a => ({
+      inlineData: { data: a.data.split(',')[1] || a.data, mimeType: a.mimeType }
     })),
+    { text: prompt }
+  ];
+
+  const contents = [
+    ...historyParts,
     {
       role: 'user' as const,
-      parts: [{ text: prompt }]
+      parts: currentParts
     }
   ];
 
@@ -31,20 +63,28 @@ export async function askFinIntel(
       model: "gemini-3-pro-preview",
       contents: contents,
       config: {
-        systemInstruction: `${config.systemPrompt}\n\n${expertiseModifier}\n\n${goalModifier}\n\nCRITICAL DIRECTIVE: Use your domain-specific voice. Ensure all advice aligns with their Primary Goal. Accuracy is non-negotiable. Use Google Search for live data. Use Markdown.`,
+        systemInstruction: `${config.systemPrompt}\n\n${expertiseModifier}\n\n${goalModifier}\n\nCRITICAL DIRECTIVE: You have vision and document parsing capabilities. If an image is provided, treat it as a technical chart or financial statement. Analyze it with precision. Use your domain-specific voice. Ensure all advice aligns with their Primary Goal. Use Google Search for live data validation. Use Markdown.`,
         tools: [{ googleSearch: {} }],
         thinkingConfig: { thinkingBudget: 4000 },
-        temperature: 0.6,
+        temperature: 0.4,
       },
     });
 
     if (!response.candidates || response.candidates.length === 0) {
-      throw new Error("Intelligence stream interrupted.");
+      throw {
+        category: ErrorCategory.SAFETY,
+        message: "Intelligence stream blocked by internal safety protocol. Sensitive content detected.",
+        retryable: false
+      };
     }
 
     const text = response.text;
     if (!text) {
-      throw new Error("Received empty intelligence packet.");
+      throw {
+        category: ErrorCategory.API,
+        message: "Null packet received from intelligence node.",
+        retryable: true
+      };
     }
     
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
@@ -61,8 +101,31 @@ export async function askFinIntel(
     return { text, sources: sources.length > 0 ? sources : undefined };
   } catch (error: any) {
     console.error("Gemini Intel Core Error:", error);
-    const errorMessage = error?.message || "";
-    if (errorMessage.includes("429")) throw new Error("Strategic depth limit reached. Node cooldown in progress.");
-    throw new Error(`SYSTEM_FAULT: ${errorMessage || "Connection lost. Re-establishing link..."}`);
+    
+    // Check if it's already an AppError
+    if (error.category) throw error;
+
+    const msg = error?.message || "";
+    if (msg.includes("429")) {
+      throw {
+        category: ErrorCategory.API,
+        message: "Strategic depth limit reached (Quota Exceeded). Node cooling down.",
+        retryable: true
+      };
+    }
+
+    if (msg.includes("safety") || msg.includes("blocked")) {
+      throw {
+        category: ErrorCategory.SAFETY,
+        message: "Content flagged by security protocols. Adjustment required.",
+        retryable: false
+      };
+    }
+
+    throw {
+      category: ErrorCategory.API,
+      message: `Critical intelligence node fault: ${msg || "Unknown disconnection."}`,
+      retryable: true
+    };
   }
 }

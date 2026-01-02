@@ -26,12 +26,35 @@ export enum FinancialGoal {
   INCOME = 'INCOME'              // Yield / Dividend focus
 }
 
+export interface Attachment {
+  data: string; // base64
+  mimeType: string;
+  name: string;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   mode: FinMode;
   timestamp: number;
   sources?: Array<{ title: string; uri: string }>;
+  attachments?: Attachment[];
+}
+
+export enum ErrorCategory {
+  API = 'API_FAULT',
+  NETWORK = 'NETWORK_OFFLINE',
+  SAFETY = 'CONTENT_BLOCKED',
+  PERMISSIONS = 'PERMISSION_DENIED',
+  VALIDATION = 'INPUT_VALIDATION',
+  AUTH = 'AUTHENTICATION_ERROR'
+}
+
+export interface AppError {
+  category: ErrorCategory;
+  message: string;
+  retryable: boolean;
+  timestamp: number;
 }
 
 export interface PortfolioAsset {
