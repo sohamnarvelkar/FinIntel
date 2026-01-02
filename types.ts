@@ -69,3 +69,11 @@ export interface UserContext {
   goal: FinancialGoal;
   portfolio?: PortfolioAsset[];
 }
+
+export interface UserSession {
+  username: string;
+  lastLogin: number;
+  accessLevel: 'STANDARD' | 'INSTITUTIONAL';
+}
+
+export type AuthStatus = 'UNAUTHENTICATED' | 'CHALLENGE' | 'KEY_REQUIRED' | 'AUTHENTICATED';

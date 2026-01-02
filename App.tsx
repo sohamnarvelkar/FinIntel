@@ -1,12 +1,13 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { FinMode, ChatMessage, ExpertiseLevel, FinancialGoal, Attachment, AppError, ErrorCategory } from './types';
+import { FinMode, ChatMessage, ExpertiseLevel, FinancialGoal, Attachment, AppError, ErrorCategory, UserSession } from './types';
 import { MODE_CONFIGS } from './constants';
 import { askFinIntel } from './services/gemini';
 import MarkdownView from './components/MarkdownView';
 import TechnicalReportCard from './components/TechnicalReportCard';
 import AnalysisModule from './components/AnalysisModule';
 import SecurityGuard from './components/SecurityGuard';
+import AuthGuard from './components/AuthGuard';
 
 const MarketTicker: React.FC = () => {
   const indices = [
@@ -101,6 +102,7 @@ const ErrorToast: React.FC<{ error: AppError; onDismiss: () => void; onRetry?: (
 };
 
 const App: React.FC = () => {
+  const [session, setSession] = useState<UserSession | null>(null);
   const [activeMode, setActiveMode] = useState<FinMode>(FinMode.TRADING);
   const [expertise, setExpertise] = useState<ExpertiseLevel>(ExpertiseLevel.INTERMEDIATE);
   const [goal, setGoal] = useState<FinancialGoal>(FinancialGoal.ACCUMULATION);
@@ -321,6 +323,14 @@ const App: React.FC = () => {
     setShowRecentDropdown(false);
   };
 
+  const handleLogout = () => {
+    setSession(null);
+  };
+
+  if (!session) {
+    return <AuthGuard onAuthenticated={setSession} />;
+  }
+
   const currentMessages = messages.filter(m => m.mode === activeMode);
   const filteredMessages = searchQuery.trim() === '' 
     ? currentMessages 
@@ -376,6 +386,19 @@ const App: React.FC = () => {
             </button>
           ))}
         </nav>
+
+        <div className="p-4 border-t border-slate-800 space-y-4">
+          <div className="flex items-center gap-3 px-3 py-3 bg-slate-900/50 rounded-2xl border border-slate-800">
+            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-black text-white">OP</div>
+            <div className="flex-1 min-w-0">
+               <div className="text-[10px] font-black text-white truncate uppercase">{session.username}</div>
+               <div className="text-[8px] font-bold text-blue-500 uppercase tracking-widest">{session.accessLevel}</div>
+            </div>
+            <button onClick={handleLogout} className="text-slate-600 hover:text-rose-500 transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
+            </button>
+          </div>
+        </div>
       </aside>
 
       <main key={activeMode} className="flex-1 flex flex-col relative min-w-0 h-full">
