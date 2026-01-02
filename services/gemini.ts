@@ -1,17 +1,19 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { FinMode, ChatMessage, ExpertiseLevel } from "../types";
-import { MODE_CONFIGS, EXPERTISE_MODIFIERS } from "../constants";
+import { FinMode, ChatMessage, ExpertiseLevel, FinancialGoal } from "../types";
+import { MODE_CONFIGS, EXPERTISE_MODIFIERS, GOAL_MODIFIERS } from "../constants";
 
 export async function askFinIntel(
   prompt: string,
   mode: FinMode,
   expertise: ExpertiseLevel = ExpertiseLevel.INTERMEDIATE,
+  goal: FinancialGoal = FinancialGoal.ACCUMULATION,
   history: ChatMessage[] = []
 ): Promise<{ text: string; sources?: Array<{ title: string; uri: string }> }> {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const config = MODE_CONFIGS[mode];
   const expertiseModifier = EXPERTISE_MODIFIERS[expertise];
+  const goalModifier = GOAL_MODIFIERS[goal];
 
   const contents = [
     ...history.slice(-10).map(msg => ({ 
@@ -29,7 +31,7 @@ export async function askFinIntel(
       model: "gemini-3-pro-preview",
       contents: contents,
       config: {
-        systemInstruction: `${config.systemPrompt}\n\n${expertiseModifier}\n\nCRITICAL DIRECTIVE: You are an elite financial operative. Accuracy is everything. Use Google Search for real-time market data. Use Markdown.`,
+        systemInstruction: `${config.systemPrompt}\n\n${expertiseModifier}\n\n${goalModifier}\n\nCRITICAL DIRECTIVE: Use your domain-specific voice. Ensure all advice aligns with their Primary Goal. Accuracy is non-negotiable. Use Google Search for live data. Use Markdown.`,
         tools: [{ googleSearch: {} }],
         thinkingConfig: { thinkingBudget: 4000 },
         temperature: 0.6,
@@ -37,12 +39,12 @@ export async function askFinIntel(
     });
 
     if (!response.candidates || response.candidates.length === 0) {
-      throw new Error("No response generated. Protocol alert.");
+      throw new Error("Intelligence stream interrupted.");
     }
 
     const text = response.text;
     if (!text) {
-      throw new Error("Empty intelligence stream received.");
+      throw new Error("Received empty intelligence packet.");
     }
     
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;

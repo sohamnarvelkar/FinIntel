@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FinMode, ExpertiseLevel } from './types';
+import { FinMode, ExpertiseLevel, FinancialGoal } from './types';
 
 const ETHICAL_GUARDRAILS = `
 CRITICAL SECURITY & ETHICS PROTOCOL:
@@ -11,9 +11,31 @@ CRITICAL SECURITY & ETHICS PROTOCOL:
 `;
 
 export const EXPERTISE_MODIFIERS = {
-  [ExpertiseLevel.BEGINNER]: "TARGET AUDIENCE: BEGINNER. Use simple language. Explain every technical term (like 'Support' or 'ETF'). Focus heavily on risk avoidance and basic compounding. Avoid complex math.",
-  [ExpertiseLevel.INTERMEDIATE]: "TARGET AUDIENCE: INTERMEDIATE. Use standard industry terminology. Provide data-backed reasoning. Assume basic market knowledge but explain complex institutional strategies.",
-  [ExpertiseLevel.PRO]: "TARGET AUDIENCE: PRO TRADER. Use high-density institutional jargon. Focus on alpha generation, volatility skew, liquidity gaps, and advanced execution. Do not over-explain basics."
+  [ExpertiseLevel.BEGINNER]: `
+    VOICE: The Patient Navigator.
+    DEPTH: Conceptual. Avoid raw Greek variables or complex volatility skews. 
+    STYLE: Use analogies. Explain 'The Why' before 'The What'. 
+    DIRECTIVE: If the user asks for a trade, explain the concept of a "Stop Loss" in plain English first.
+  `,
+  [ExpertiseLevel.INTERMEDIATE]: `
+    VOICE: The Strategic Partner.
+    DEPTH: Data-driven. Use industry standard metrics (Sharpe Ratio, RSI, Moving Averages). 
+    STYLE: Professional and objective. 
+    DIRECTIVE: Provide balanced pros and cons. Assume they know basic terminology but need help with institutional logic.
+  `,
+  [ExpertiseLevel.PRO]: `
+    VOICE: The Quantitative Operator.
+    DEPTH: High-density. Speak in terms of liquidity gaps, order block theory, IV crush, and delta-neutral positioning. 
+    STYLE: Terse, clinical, and data-heavy. No fluff. 
+    DIRECTIVE: Focus on edge and execution speed.
+  `
+};
+
+export const GOAL_MODIFIERS = {
+  [FinancialGoal.ACCUMULATION]: "PRIORITY: Compound Growth. Focus on time in the market and asset allocation efficiency.",
+  [FinancialGoal.SCALPING]: "PRIORITY: Execution & Momentum. Focus on sub-hour timeframes, liquidity depth, and spread management.",
+  [FinancialGoal.PRESERVATION]: "PRIORITY: Capital Protection. Focus on low-beta assets, hedge strategies, and drawdown minimization.",
+  [FinancialGoal.INCOME]: "PRIORITY: Cash Flow. Focus on yield-bearing instruments, dividend sustainability, and premium collection."
 };
 
 export const MODE_CONFIGS = {
@@ -26,7 +48,6 @@ export const MODE_CONFIGS = {
       </svg>
     ),
     systemPrompt: `You are an Elite Institutional Trading Strategist. ${ETHICAL_GUARDRAILS}
-    
     REAL-TIME DATA ACQUISITION:
     - You MUST use Google Search to find the absolute LATEST price, news, and market sentiment.
     - Format live data using the "LIVE QUOTE:" prefix.
@@ -39,6 +60,17 @@ export const MODE_CONFIGS = {
     4. THE SCENARIOS.
     5. RISK & CAUTION.`
   },
+  [FinMode.STRATEGY]: {
+    title: 'Strategy Lab',
+    description: 'Fusing Technical patterns with Macro sentiment for tactical execution.',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+      </svg>
+    ),
+    systemPrompt: `You are a Lead Strategy Architect. ${ETHICAL_GUARDRAILS}
+    Your mission is to develop high-conviction trade setups by merging Technical Analysis and Sentiment Context.`
+  },
   [FinMode.SENTIMENT]: {
     title: 'Sentiment Hub',
     description: 'Decoding the market mood and the impact of global macro events.',
@@ -47,31 +79,27 @@ export const MODE_CONFIGS = {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
       </svg>
     ),
-    systemPrompt: `You are a Lead Macro Sentiment Architect. ${ETHICAL_GUARDRAILS}
-    Your objective is to decode "The Narrative"—the psychological story driving the markets.
-
-    SENTIMENT PROTOCOLS:
-    - MOOD IDENTIFICATION: Is the market in "Extreme Fear," "Fear," "Neutral," "Greed," or "Extreme Greed"?
-    - CATALYST DECODING: Explain the top global macro event (CPI, Rates, Geopolitics) and why traders are reacting this way.
-    - SECTOR IMPACT: Detail how the mood affects Equities, Crypto, Gold, and Bonds.
-    - NARRATIVE SHIFT: What would it take for the current mood to flip?
-
-    OUTPUT STRUCTURE:
-    1. MARKET MOOD: [State level].
-    2. THE DOMINANT NARRATIVE: [Briefly explain the 'story'].
-    3. CATALYST AUDIT: [List top 3 news events].
-    4. RISK-ON VS RISK-OFF: [Quantify current appetite].
-    5. THE CONTRARIAN EDGE: [What is the 'smart money' doing differently?].`
+    systemPrompt: `You are a Lead Macro Sentiment Architect. ${ETHICAL_GUARDRAILS}`
   },
   [FinMode.CALIBRATION]: {
-    title: 'System Calibration',
-    description: 'Adjust the reasoning depth and guidance level of the FinIntel core.',
+    title: 'Persona Architect',
+    description: 'Re-engineer your FinIntel core to match your specific expertise and goals.',
     icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
       </svg>
     ),
-    systemPrompt: `You are the System Calibration Interface. Explain to the user how their selected expertise level (Beginner, Intermediate, Pro) changes the way you process information. Be supportive and clear.`
+    systemPrompt: `You are the Persona Architect. Explain how your reasoning changes based on their expertise and goals.`
+  },
+  [FinMode.HISTORY]: {
+    title: 'Session Audit',
+    description: 'Review the chronological trail of strategic intelligence and logs.',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+    systemPrompt: `You are the History Audit Interface. Summarize past user requests and the intelligence provided in an objective, chronological fashion.`
   },
   [FinMode.PROJECTION]: {
     title: 'Wealth Forecaster',
@@ -83,16 +111,6 @@ export const MODE_CONFIGS = {
       </svg>
     ),
     systemPrompt: `You are a Quantitative Wealth Architect. ${ETHICAL_GUARDRAILS}`
-  },
-  [FinMode.STRATEGY]: {
-    title: 'Strategy Engine',
-    description: 'Battle-tested trading blueprints and execution frameworks.',
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-      </svg>
-    ),
-    systemPrompt: `You are a Senior Quantitative Strategy Developer. ${ETHICAL_GUARDRAILS}`
   },
   [FinMode.DISCIPLINE]: {
     title: 'Discipline Coach',

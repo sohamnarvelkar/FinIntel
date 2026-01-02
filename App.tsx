@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { FinMode, ChatMessage, ExpertiseLevel } from './types';
+import { FinMode, ChatMessage, ExpertiseLevel, FinancialGoal } from './types';
 import { MODE_CONFIGS } from './constants';
 import { askFinIntel } from './services/gemini';
 import MarkdownView from './components/MarkdownView';
@@ -16,7 +16,6 @@ const MarketTicker: React.FC = () => {
     { name: 'NASDAQ', value: '16,248.50', change: '+0.22%', up: true },
     { name: 'BTC/USD', value: '64,120.00', change: '-1.45%', up: false },
     { name: 'GOLD', value: '2,345.10', change: '+0.45%', up: true },
-    { name: 'USD/INR', value: '83.34', change: '-0.05%', up: false },
   ];
 
   return (
@@ -36,72 +35,6 @@ const MarketTicker: React.FC = () => {
           </div>
         ))}
       </div>
-    </div>
-  );
-};
-
-const ManualFeedPanel: React.FC<{ onApply: (data: string) => void; onCancel: () => void }> = ({ onApply, onCancel }) => {
-  const [ticker, setTicker] = useState('');
-  const [price, setPrice] = useState('');
-  const [news, setNews] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!ticker) return;
-    const manualData = `[MANUAL DATA OVERRIDE] Asset: ${ticker}, Price: ${price || 'Unknown'}, News: ${news || 'None mentioned'}. Please factor this as the absolute truth for analysis.`;
-    onApply(manualData);
-  };
-
-  return (
-    <div className="absolute bottom-full left-0 mb-4 w-full max-w-md bg-[#0d1321] border border-blue-500/30 rounded-2xl p-6 shadow-2xl animate-slide-up backdrop-blur-xl z-50">
-      <div className="flex items-center justify-between mb-5">
-        <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-          Direct Market Entry
-        </div>
-        <button onClick={onCancel} className="text-slate-500 hover:text-white transition-colors">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-        </button>
-      </div>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Symbol</label>
-            <input 
-              type="text" 
-              placeholder="e.g. BTC, AAPL" 
-              className="w-full bg-[#0a0f1a] border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:border-blue-500/50 outline-none"
-              value={ticker}
-              onChange={(e) => setTicker(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Latest Price</label>
-            <input 
-              type="text" 
-              placeholder="e.g. 64200" 
-              className="w-full bg-[#0a0f1a] border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:border-blue-500/50 outline-none"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-            />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Manual News Feed</label>
-          <textarea 
-            placeholder="Key catalyst or headline..." 
-            className="w-full bg-[#0a0f1a] border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:border-blue-500/50 outline-none h-20 resize-none"
-            value={news}
-            onChange={(e) => setNews(e.target.value)}
-          />
-        </div>
-        <button 
-          type="submit"
-          className="w-full bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest py-3 rounded-xl transition-all shadow-xl shadow-blue-900/20"
-        >
-          Inject to Intel Node
-        </button>
-      </form>
     </div>
   );
 };
@@ -141,13 +74,20 @@ const ErrorAlert: React.FC<{ message: string; onRetry: () => void; onClose: () =
 const App: React.FC = () => {
   const [activeMode, setActiveMode] = useState<FinMode>(FinMode.TRADING);
   const [expertise, setExpertise] = useState<ExpertiseLevel>(ExpertiseLevel.INTERMEDIATE);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [goal, setGoal] = useState<FinancialGoal>(FinancialGoal.ACCUMULATION);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const saved = localStorage.getItem('finintel_history');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastPrompt, setLastPrompt] = useState('');
-  const [showManualFeed, setShowManualFeed] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    localStorage.setItem('finintel_history', JSON.stringify(messages));
+  }, [messages]);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -178,7 +118,7 @@ const App: React.FC = () => {
 
     try {
       const modeHistory = messages.filter(m => m.mode === activeMode);
-      const response = await askFinIntel(finalInput, activeMode, expertise, modeHistory);
+      const response = await askFinIntel(finalInput, activeMode, expertise, goal, modeHistory);
       
       const assistantMessage: ChatMessage = {
         role: 'assistant',
@@ -196,18 +136,14 @@ const App: React.FC = () => {
     }
   };
 
-  const handleManualDataApply = (manualData: string) => {
-    setShowManualFeed(false);
-    handleSend(undefined, manualData);
-  };
-
   const handleRetry = () => {
     setError(null);
     handleSend(undefined, lastPrompt);
   };
 
   const clearHistory = () => {
-    setMessages(prev => prev.filter(m => m.mode !== activeMode));
+    setMessages([]);
+    localStorage.removeItem('finintel_history');
   };
 
   const currentMessages = messages.filter(m => m.mode === activeMode);
@@ -217,7 +153,7 @@ const App: React.FC = () => {
       
       {error && <ErrorAlert message={error} onRetry={handleRetry} onClose={() => setError(null)} />}
 
-      {/* Sidebar - Terminal Metadata */}
+      {/* Sidebar */}
       <aside className="w-full lg:w-72 bg-[#0d1321] border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col z-30 shadow-2xl shrink-0">
         <div className="p-5 border-b border-slate-800 bg-[#0a0f1a]/50">
           <div className="flex items-center gap-3 mb-1">
@@ -227,11 +163,11 @@ const App: React.FC = () => {
               </svg>
             </div>
             <div>
-              <h1 className="text-sm font-black text-white tracking-tighter uppercase">FinIntel <span className="text-blue-500">v3.5</span></h1>
+              <h1 className="text-sm font-black text-white tracking-tighter uppercase">FinIntel <span className="text-blue-500">v4.8</span></h1>
               <div className="flex items-center gap-1.5">
-                <div className={`w-1.5 h-1.5 rounded-full ${expertise === ExpertiseLevel.PRO ? 'bg-indigo-500' : 'bg-emerald-500'}`}></div>
-                <span className={`text-[9px] font-bold uppercase tracking-widest ${expertise === ExpertiseLevel.PRO ? 'text-indigo-400' : 'text-emerald-500'}`}>
-                  {expertise}_MODE_SYNC
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-blue-500">
+                  {expertise}_{goal}_SYNC
                 </span>
               </div>
             </div>
@@ -239,10 +175,6 @@ const App: React.FC = () => {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          <div className="px-3 mb-2 flex justify-between items-center">
-            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Active Modules</span>
-            <span className="text-[8px] text-slate-700 mono">RD-100</span>
-          </div>
           {Object.entries(MODE_CONFIGS).map(([key, config]) => (
             <button
               key={key}
@@ -265,81 +197,69 @@ const App: React.FC = () => {
             </button>
           ))}
         </nav>
-
-        <div className="p-4 border-t border-slate-800 bg-[#0a0f1a]/80 space-y-3">
-          <div className="space-y-2">
-            <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-widest text-slate-500">
-              <span>Cognitive Depth</span>
-              <span className="text-blue-400 mono">{expertise}</span>
-            </div>
-            <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500 w-[98%] opacity-50"></div>
-            </div>
-          </div>
-        </div>
       </aside>
 
-      {/* Main Container */}
+      {/* Main Stage */}
       <main key={activeMode} className="flex-1 flex flex-col relative animate-fade-in min-w-0 h-full">
         <MarketTicker />
 
-        <header className="bg-[#0a0f1a] border-b border-slate-800/50 h-12 flex items-center justify-center shrink-0 z-10 px-6">
-          <div className="w-full max-w-5xl flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] hidden sm:inline">Grounding Engine</span>
-              <div className="h-4 w-px bg-slate-800 hidden sm:inline mx-1"></div>
-              <span className="text-xs font-bold text-white uppercase tracking-wider">{MODE_CONFIGS[activeMode].title}</span>
-            </div>
-            <div className="flex items-center gap-6">
-              <button 
-                onClick={clearHistory}
-                className="text-[10px] font-bold text-slate-500 hover:text-rose-400 transition-colors uppercase tracking-widest flex items-center gap-2 group"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                Flush Node
-              </button>
-            </div>
+        <header className="bg-[#0a0f1a] border-b border-slate-800/50 h-12 flex items-center justify-between shrink-0 z-10 px-6">
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">{MODE_CONFIGS[activeMode].title}</span>
           </div>
+          <button 
+            onClick={clearHistory}
+            className="text-[10px] font-bold text-slate-500 hover:text-rose-400 transition-colors uppercase tracking-widest"
+          >
+            Purge History
+          </button>
         </header>
 
-        {/* Message Stage */}
         <div className="flex-1 overflow-y-auto scroll-smooth">
           <div className="max-w-5xl mx-auto w-full px-4 lg:px-8 py-10 space-y-10 pb-48">
-            {currentMessages.length === 0 && (
+            {activeMode === FinMode.HISTORY ? (
+              <AnalysisModule 
+                content="" 
+                mode={FinMode.HISTORY} 
+                messages={messages}
+                onSelectMode={(m) => setActiveMode(m)}
+              />
+            ) : currentMessages.length === 0 ? (
               <div className="h-[60vh] flex flex-col items-center justify-center text-center animate-slide-up">
                 <div className="relative max-w-lg w-full">
-                  <div className="absolute inset-0 bg-blue-600/5 blur-[80px] rounded-full"></div>
-                  <div className="relative p-10 bg-[#0d1321] rounded-3xl border border-slate-800 shadow-2xl">
+                  <div className="p-10 bg-[#0d1321] rounded-3xl border border-slate-800 shadow-2xl">
                     <div className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 text-blue-500 border border-blue-500/20">
                       {MODE_CONFIGS[activeMode].icon}
                     </div>
-                    <h2 className="text-lg font-bold text-white mb-2 uppercase tracking-[0.2em]">{MODE_CONFIGS[activeMode].title} Active</h2>
+                    <h2 className="text-lg font-bold text-white mb-2 uppercase tracking-[0.2em]">{MODE_CONFIGS[activeMode].title}</h2>
                     <p className="text-slate-400 leading-relaxed text-sm mb-8">
-                      System recalibrated for <strong>{expertise}</strong> level reasoning.
+                      {activeMode === FinMode.CALIBRATION 
+                        ? 'Define your persona and objectives to synchronize the intelligence node.' 
+                        : `System tuned for ${expertise} level ${goal.replace('_', ' ')} logic.`}
                     </p>
-                    <div className="grid grid-cols-1 gap-2">
-                      <button 
-                        onClick={() => handleSend(undefined, activeMode === FinMode.CALIBRATION ? `Show me the status of the intelligence calibration.` : `Analyze with ${expertise} precision.`)}
-                        className="px-4 py-3 bg-slate-900/50 hover:bg-blue-600/10 text-slate-300 hover:text-blue-400 text-[10px] font-bold rounded-xl border border-slate-800 hover:border-blue-500/30 transition-all uppercase tracking-widest"
-                      >
-                        {activeMode === FinMode.CALIBRATION ? 'View Calibration Profile' : 'Initiate Reasoning'}
-                      </button>
-                    </div>
+                    <button 
+                      onClick={() => handleSend(undefined, "Begin domain-specific reasoning.")}
+                      className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black rounded-xl transition-all uppercase tracking-widest"
+                    >
+                      Initialize Node
+                    </button>
                   </div>
                 </div>
               </div>
-            )}
+            ) : null}
 
             {activeMode === FinMode.CALIBRATION && (
               <AnalysisModule 
                 content="" 
                 mode={FinMode.CALIBRATION} 
                 expertise={expertise} 
+                goal={goal}
                 onSetExpertise={setExpertise}
+                onSetGoal={setGoal}
               />
             )}
 
-            {currentMessages.map((msg, idx) => (
+            {activeMode !== FinMode.HISTORY && currentMessages.map((msg, idx) => (
               <div key={`${activeMode}-${idx}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up w-full`}>
                 <div className={`${
                   msg.role === 'user' 
@@ -354,34 +274,35 @@ const App: React.FC = () => {
                             {MODE_CONFIGS[msg.mode].icon}
                           </div>
                           <div>
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Intel Node {expertise}</span>
-                            <div className="text-[9px] text-slate-600 mono">{new Date(msg.timestamp).toLocaleTimeString()} • SYNC_OK</div>
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Persona: {expertise} | {goal}</span>
                           </div>
                         </div>
                       </div>
                       
-                      {msg.mode === FinMode.TRADING && (
-                        <TechnicalReportCard content={msg.content} />
-                      )}
-
-                      <AnalysisModule content={msg.content} mode={msg.mode} />
+                      {msg.mode === FinMode.TRADING && <TechnicalReportCard content={msg.content} />}
+                      <AnalysisModule content={msg.content} mode={msg.mode} expertise={expertise} goal={goal} />
 
                       <div className="prose prose-invert max-w-none text-slate-200">
                         <MarkdownView content={msg.content} />
                       </div>
 
-                      {msg.sources && (
-                        <div className="mt-12 pt-8 border-t border-slate-800/80">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {msg.sources.slice(0, 4).map((source, sIdx) => (
+                      {msg.sources && msg.sources.length > 0 && (
+                        <div className="mt-8 pt-6 border-t border-slate-800/50">
+                          <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                            Intelligence Sources
+                          </div>
+                          <div className="flex flex-wrap gap-3">
+                            {msg.sources.map((source, sIdx) => (
                               <a 
                                 key={sIdx} 
                                 href={source.uri} 
                                 target="_blank" 
-                                rel="noreferrer"
-                                className="text-[10px] bg-[#0a0f1a] hover:bg-blue-900/10 py-2.5 px-4 rounded-xl border border-slate-800 text-blue-400 transition-all font-bold flex items-center gap-3 group/link truncate"
+                                rel="noopener noreferrer"
+                                className="text-[11px] font-bold text-blue-400 hover:text-blue-300 transition-colors bg-blue-500/5 border border-blue-500/10 px-3 py-1.5 rounded-lg flex items-center gap-2"
                               >
                                 {source.title}
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                               </a>
                             ))}
                           </div>
@@ -404,9 +325,7 @@ const App: React.FC = () => {
                       <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
                       <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                     </div>
-                    <div>
-                      <span className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-500">Reasoning at {expertise} depth...</span>
-                    </div>
+                    <span className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-500">Processing via {expertise} reasoning core...</span>
                   </div>
                 </div>
               </div>
@@ -418,48 +337,21 @@ const App: React.FC = () => {
         {/* Input Console */}
         <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-10 bg-gradient-to-t from-[#0a0f1a] via-[#0a0f1a]/95 to-transparent z-20 pointer-events-none">
           <div className="max-w-5xl mx-auto w-full pointer-events-auto relative">
-            
-            {showManualFeed && (
-              <ManualFeedPanel 
-                onApply={handleManualDataApply} 
-                onCancel={() => setShowManualFeed(false)} 
-              />
-            )}
-
-            <div className="bg-slate-900/40 border border-slate-800/60 rounded-xl p-3 mb-4 backdrop-blur-sm flex items-center justify-center gap-4">
-              <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest flex items-center gap-1.5">
-                <div className="w-1 h-1 bg-blue-500 rounded-full animate-pulse"></div>
-                Calibrated Guidance: {expertise} Level Active
-              </span>
-            </div>
-            
             <form onSubmit={handleSend} className="flex gap-4">
-              <div className="relative flex-1 group">
-                <button 
-                  type="button"
-                  onClick={() => setShowManualFeed(!showManualFeed)}
-                  className={`absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-                    showManualFeed ? 'bg-blue-600 text-white' : 'bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-800'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                </button>
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onFocus={() => setError(null)}
-                  placeholder={`Consult intelligence at ${expertise} depth...`}
-                  className="w-full bg-[#0d1321] border border-slate-800 text-white py-5 pl-14 pr-20 rounded-2xl shadow-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/40 transition-all placeholder-slate-700 font-semibold text-base lg:text-lg"
-                  disabled={isLoading}
-                />
-              </div>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask for anything"
+                className="w-full bg-[#0d1321] border border-slate-800 text-white py-5 px-8 rounded-2xl shadow-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 font-semibold"
+                disabled={isLoading}
+              />
               <button
                 type="submit"
                 disabled={isLoading || !input.trim()}
-                className="bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800/50 disabled:text-slate-700 px-8 rounded-2xl text-white transition-all shadow-2xl shadow-blue-900/20 active:scale-95 flex items-center justify-center font-black text-xs uppercase tracking-widest border border-blue-400/30 group"
+                className="bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800/50 px-8 rounded-2xl text-white transition-all font-black text-xs uppercase tracking-widest border border-blue-400/30"
               >
-                Sync
+                Enter
               </button>
             </form>
           </div>
